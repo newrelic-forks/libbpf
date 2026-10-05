@@ -563,10 +563,23 @@ struct bpf_kprobe_opts {
 	bool retprobe;
 	/* kprobe attach mode */
 	enum probe_attach_mode attach_mode;
+
+	/*
+	 * max number of instances of kretprobe that can be active at
+	 * one time; only applicable to legacy kprobes (0 = kernel default)
+	 */
+	int maxactive;
+	/*
+	 * user-defined tag embedded in legacy probe name for later cleanup;
+	 * enables libbpf_cleanup_kprobe_legacy() to remove probes by tag
+	 * even from a different process (only applicable to legacy kprobes)
+	 */
+	const char *session_tag;
+
 	size_t :0;
 };
 
-#define bpf_kprobe_opts__last_field attach_mode
+#define bpf_kprobe_opts__last_field session_tag
 
 /**
  * @brief **bpf_program__attach_kprobe()** attaches a BPF program to a
@@ -599,6 +612,19 @@ LIBBPF_API struct bpf_link *
 bpf_program__attach_kprobe_opts(const struct bpf_program *prog,
                                 const char *func_name,
                                 const struct bpf_kprobe_opts *opts);
+
+/**
+ * @brief **libbpf_cleanup_kprobe_legacy()** removes all legacy kprobes
+ * matching the given session tag.
+ *
+ * @param session_tag User-defined tag that was used when attaching probes
+ * @return Number of probes removed on success; negative error code on failure
+ *
+ * This function scans tracefs kprobe_events and removes all probes whose
+ * names match the pattern "libbpf_<session_tag>_*". Useful for cleaning up
+ * stale probes from crashed processes.
+ */
+LIBBPF_API int libbpf_cleanup_kprobe_legacy(const char *session_tag);
 
 struct bpf_kprobe_multi_opts {
 	/* size of this struct, for forward/backward compatibility */
